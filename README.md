@@ -1,11 +1,6 @@
 # 🎯 Video Game Market Analysis Dashboard
 ### Advanced Exploratory Data Analysis, SQL Pipeline & Feature Engineering Case Study
 
-![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
-![Pandas](https://img.shields.io/badge/pandas-data%20analysis-orange)
-![SQL](https://img.shields.io/badge/SQL-pandasql-lightgrey)
-![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)
-
 ## 📖 Project Overview
 This project is an end-to-end data analytics and business intelligence case study investigating regional consumer buying behaviors, historical market lifecycle shifts, and overarching industry metrics within the global video game industry. 
 

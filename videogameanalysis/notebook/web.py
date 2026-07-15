@@ -1,208 +1,766 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')  # CRITICAL FIX: Forces headless mode to prevent Streamlit Cloud crashes
 import matplotlib.pyplot as plt
 import seaborn as sns
+from pathlib import Path
 
-# Set page configuration for a polished corporate appearance
+# --------------------------------------------------
+# PAGE CONFIG
+# --------------------------------------------------
 st.set_page_config(
-    page_title='Video Game Market Analysis Case Study', 
-    page_icon='🎯', 
-    layout='wide',
-    initial_sidebar_state='expanded'
+    page_title="🎮 Video Game Sales Analytics Dashboard",
+    page_icon="🎮",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Custom Global CSS Styling
+# --------------------------------------------------
+# CUSTOM CSS
+# --------------------------------------------------
 st.markdown("""
 <style>
-    .main-h { font-size: 2.3rem; color: #1E3A8A; font-weight: 700; margin-bottom: 0.2rem; }
-    .card { background-color: #F3F4F6; padding: 1.2rem; border-radius: 0.5rem; border-left: 5px solid #3B82F6; margin-bottom: 1rem; }
-    .mv { font-size: 1.8rem; font-weight: bold; color: #1E3A8A; }
+
+.main-title{
+    font-size:42px;
+    font-weight:700;
+    color:#2563EB;
+}
+
+.sub-title{
+    font-size:18px;
+    color:#555;
+}
+
+.metric-card{
+    background:#f8fafc;
+    border-radius:12px;
+    padding:20px;
+    text-align:center;
+    border-left:6px solid #2563EB;
+    box-shadow:0 3px 10px rgba(0,0,0,0.08);
+}
+
+.metric-value{
+    font-size:32px;
+    font-weight:bold;
+    color:#2563EB;
+}
+
+.metric-label{
+    color:#444;
+    font-size:15px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
-# Data Ingestion Engine (Loads actual CSV or seamlessly generates exact statistical mirror)
-@st.cache_data
-def load_production_dataset():
-    # Attempt to read live file from repository structure first
-    possible_paths = ['vgsales.csv', '../vgsales.csv', 'videogamesales/vgsales.csv']
-    df_loaded = None
+# --------------------------------------------------
+# LOAD DATA
+# --------------------------------------------------
+@st.cache_data(show_spinner=False)
+def load_data():
+
+    possible_paths = [
+        "vgsales.csv",
+        "data/vgsales.csv",
+        "../vgsales.csv"
+    ]
+
+    df = None
+
     for path in possible_paths:
-        try:
-            df_loaded = pd.read_csv(path)
+        if Path(path).exists():
+            df = pd.read_csv(path)
             break
-        except:
-            continue
-            
-    if df_loaded is not None:
-        # Data Integrity Protocol
-        df_cleaned = df_loaded.dropna(subset=['Year', 'Publisher'])
-        df_cleaned['Year'] = df_cleaned['Year'].astype(int)
-    else:
-        # Fallback Generator: Dynamically mirrors exact mathematical metrics from case study
-        n = 16327
-        genres = ['Action', 'Sports', 'Misc', 'Role-Playing', 'Shooter', 'Adventure', 'Racing', 'Platform', 'Simulation', 'Fighting', 'Strategy', 'Puzzle']
-        platforms = ['PS2', 'X360', 'PS3', 'Wii', 'DS', 'PS', 'GBA', 'PSP', 'PS4', 'PC']
-        publishers = ['Electronic Arts', 'Activision', 'Namco Bandai Games', 'Ubisoft', 'Konami Digital Entertainment', 'Nintendo']
-        
+
+    if df is None:
+
+        st.warning("vgsales.csv not found. Showing demo dataset.")
+
         np.random.seed(42)
-        global_sales = np.random.lognormal(mean=-1.5, sigma=1.1, size=n)
-        global_sales = np.clip(global_sales, 0.01, 82.74)
-        global_sales[0:5] = [82.74, 40.24, 35.82, 33.00, 31.37]
-        
-        years = np.random.choice(range(1980, 2017), size=n)
-        years[0:5] = [2006, 1985, 2008, 2009, 1996]
-        
-        df_cleaned = pd.DataFrame({
-            'Rank': range(1, n+1),
-            'Name': [f'Game Title {i}' for i in range(1, n+1)],
-            'Platform': np.random.choice(platforms, size=n),
-            'Year': years,
-            'Genre': np.random.choice(genres, size=n),
-            'Publisher': np.random.choice(publishers, size=n),
-            'NA_Sales': np.round(global_sales * 0.45, 2),
-            'EU_Sales': np.round(global_sales * 0.31, 2),
-            'JP_Sales': np.round(global_sales * 0.14, 2),
-            'Other_Sales': np.round(global_sales * 0.10, 2),
-            'Global_Sales': np.round(global_sales, 2)
+
+        n = 16327
+
+        genres = [
+            'Action','Sports','Misc','Role-Playing',
+            'Shooter','Adventure','Racing',
+            'Platform','Simulation','Fighting',
+            'Strategy','Puzzle'
+        ]
+
+        publishers = [
+            'Nintendo',
+            'Electronic Arts',
+            'Ubisoft',
+            'Activision',
+            'Konami',
+            'Namco Bandai'
+        ]
+
+        platforms = [
+            'PS2','PS3','PS4',
+            'Xbox','X360',
+            'Wii','DS','PC'
+        ]
+
+        sales = np.random.lognormal(-1.5,1.1,n)
+        sales = np.clip(sales,0.01,82.74)
+
+        df = pd.DataFrame({
+
+            "Rank":range(1,n+1),
+
+            "Name":[f"Game {i}" for i in range(n)],
+
+            "Platform":np.random.choice(platforms,n),
+
+            "Year":np.random.randint(1980,2017,n),
+
+            "Genre":np.random.choice(genres,n),
+
+            "Publisher":np.random.choice(publishers,n),
+
+            "NA_Sales":sales*0.45,
+
+            "EU_Sales":sales*0.30,
+
+            "JP_Sales":sales*0.15,
+
+            "Other_Sales":sales*0.10,
+
+            "Global_Sales":sales
+
         })
-        # Inject exact hardcoded high tier records matching findings
-        df_cleaned.loc[0, ['Name', 'Platform', 'Genre', 'Publisher']] = ['Wii Sports', 'Wii', 'Sports', 'Nintendo']
-        df_cleaned.loc[1, ['Name', 'Platform', 'Genre', 'Publisher']] = ['Super Mario Bros.', 'NES', 'Platform', 'Nintendo']
-        df_cleaned.loc[2, ['Name', 'Platform', 'Genre', 'Publisher']] = ['Mario Kart Wii', 'Wii', 'Racing', 'Nintendo']
-        df_cleaned.loc[3, ['Name', 'Platform', 'Genre', 'Publisher']] = ['Wii Sports Resort', 'Wii', 'Sports', 'Nintendo']
-        df_cleaned.loc[4, ['Name', 'Platform', 'Genre', 'Publisher']] = ['Pokemon Red/Pokemon Blue', 'GB', 'Role-Playing', 'Nintendo']
 
-    # Custom Feature Engineering Transformations
-    df_cleaned['Western_Sales'] = df_cleaned['NA_Sales'] + df_cleaned['EU_Sales']
-    df_cleaned['Era'] = df_cleaned['Year'].apply(lambda y: 'Retro Era' if y <= 2000 else ('Modern Era' if y <= 2010 else 'Current Era'))
-    
-    def calculate_strategy(row):
-        denom = max(row['Global_Sales'], 0.01)
-        if (row['JP_Sales'] / denom) > 0.7: return 'Japan Exclusive Target'
-        elif (row['Western_Sales'] / denom) > 0.8: return 'Western Exclusive Focus'
-        else: return 'Global Balanced'
-        
-    df_cleaned['Market_Strategy'] = df_cleaned.apply(calculate_strategy, axis=1)
-    df_cleaned['Title_Length'] = df_cleaned['Name'].apply(lambda x: len(str(x)))
-    
-    return df_cleaned
+    df = df.dropna(subset=["Year","Publisher"]).copy()
 
-df = load_production_dataset()
+    df["Year"] = df["Year"].astype(int)
 
-# Navigation Interface
-st.sidebar.markdown('## 📊 Case Study Viewports')
+    df["Western_Sales"] = df["NA_Sales"] + df["EU_Sales"]
+
+    df["Era"] = pd.cut(
+
+        df["Year"],
+
+        bins=[1970,2000,2010,2030],
+
+        labels=["Retro Era","Modern Era","Current Era"]
+
+    )
+
+    df["Title_Length"] = df["Name"].astype(str).str.len()
+
+    def strategy(row):
+
+        if row["JP_Sales"]/row["Global_Sales"] > 0.7:
+            return "Japan Exclusive"
+
+        elif row["Western_Sales"]/row["Global_Sales"] > 0.8:
+            return "Western Focus"
+
+        else:
+            return "Global"
+
+    df["Market_Strategy"] = df.apply(strategy,axis=1)
+
+    return df
+
+
+df = load_data()
+
+# --------------------------------------------------
+# SIDEBAR
+# --------------------------------------------------
+
+st.sidebar.title("🎮 Dashboard")
+
 mode = st.sidebar.radio(
-    'Select Dashboard Panel:', 
-    ['📋 Executive Strategy', '🛠️ Schema Integrity', '💾 SQL Aggregations', '📐 Statistical Distributions', '🌏 Regional Patterns', '🚀 Feature Engineering']
+
+    "Choose Section",
+
+    [
+
+        "📋 Overview",
+
+        "🛠️ Schema Integrity",
+
+        "💾 SQL Analysis",
+
+        "📈 Statistical Analysis",
+
+        "🌍 Regional Analysis",
+
+        "🚀 Feature Engineering"
+
+    ]
+
 )
 
-st.sidebar.markdown('---')
-st.sidebar.caption('Built with Streamlit Framework Core')
+st.sidebar.markdown("---")
 
-# 📋 Executive Overview Panel
-if mode == '📋 Executive Strategy':
-    st.markdown('<div class="main-h">🎯 Video Game Market Analysis Dashboard</div>', unsafe_allow_html=True)
-    st.markdown('#### Advanced Exploratory Data Analysis, SQL Pipeline & Feature Engineering Case Study')
-    st.markdown('---')
-    
-    c1, c2, c3, c4 = st.columns(4)
-    c1.markdown('<div class="card"><div class="mv">16,327</div>Total Ingested Records</div>', unsafe_allow_html=True)
-    c2.markdown('<div class="card"><div class="mv">76.4%</div>Western Sales Driver</div>', unsafe_allow_html=True)
-    c3.markdown('<div class="card"><div class="mv">$8,820M</div>Lifetime Gross Value</div>', unsafe_allow_html=True)
-    c4.markdown('<div class="card"><div class="mv">31</div>Unique Platforms</div>', unsafe_allow_html=True)
-    
-    st.markdown('### 🏁 Strategic Business Recommendations')
+st.sidebar.subheader("Dataset Summary")
+
+st.sidebar.write(f"Rows : **{len(df):,}**")
+
+st.sidebar.write(f"Columns : **{df.shape[1]}**")
+
+st.sidebar.write(f"Platforms : **{df['Platform'].nunique()}**")
+
+st.sidebar.write(f"Publishers : **{df['Publisher'].nunique()}**")
+
+st.sidebar.write(f"Years : **{df['Year'].min()} - {df['Year'].max()}**")
+
+# --------------------------------------------------
+# OVERVIEW PAGE
+# --------------------------------------------------
+
+if mode == "📋 Overview":
+
+    st.markdown('<p class="main-title">🎮 Video Game Sales Analytics Dashboard</p>', unsafe_allow_html=True)
+
+    st.markdown('<p class="sub-title">Interactive Business Intelligence Dashboard built with Python, Pandas, SQL, Matplotlib, Seaborn & Streamlit</p>', unsafe_allow_html=True)
+
+    st.divider()
+
+    total_games = len(df)
+
+    total_sales = df["Global_Sales"].sum()
+
+    western_share = (df["Western_Sales"].sum()/total_sales)*100
+
+    total_platforms = df["Platform"].nunique()
+
+    c1,c2,c3,c4 = st.columns(4)
+
+    with c1:
+        st.markdown(f"""
+        <div class="metric-card">
+        <div class="metric-value">{total_games:,}</div>
+        <div class="metric-label">Games</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(f"""
+        <div class="metric-card">
+        <div class="metric-value">{western_share:.1f}%</div>
+        <div class="metric-label">Western Market Share</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(f"""
+        <div class="metric-card">
+        <div class="metric-value">{total_sales:,.0f} M</div>
+        <div class="metric-label">Global Sales</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c4:
+        st.markdown(f"""
+        <div class="metric-card">
+        <div class="metric-value">{total_platforms}</div>
+        <div class="metric-label">Platforms</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+
+    st.subheader("📌 Business Insights")
+
     st.success("""
-    1. **Prioritize Western Scale Allocations:** NA and EU market territories systematically command over **76%** of aggregate global value pipelines.
-    2. **Mitigate Volatility via Median Budgeting:** Gaming commercial distributions match a severe right-skewed power law profile. Frame financial models tightly around **Median performance tiers ($0.17M)** rather than inflated mean averages ($0.54M).
-    3. **Deploy on Dominant Architecture:** Historically, Sony (PlayStation) and Microsoft (Xbox) ecosystems yield structurally superior software attachment velocities per release.
-    """)
+✅ **Western markets dominate** global revenue, contributing the majority of total sales.
 
-# 🛠️ Schema Integrity Panel
-elif mode == '🛠️ Schema Integrity':
-    st.header('🛠️ Structural Integrity Diagnostic Metrics')
-    st.write('Verifying clean structural schemas, null mappings, and integer type conversions.')
-    st.code('Total Records: 16,327 | Outlier Dropped Records: 271 Year Rows, 58 Publisher Rows (Cleaned)')
-    st.subheader('Verified Ingested Production Schema Framework')
+✅ **Median sales are much lower than the mean**, indicating a highly right-skewed distribution where only a few blockbuster games generate massive revenue.
+
+✅ **Nintendo, Sony, and Microsoft platforms** consistently produce the highest-selling titles.
+
+✅ **Action, Sports, and Shooter** genres contribute a major share of worldwide sales.
+""")
+# =====================================================
+# SCHEMA INTEGRITY
+# =====================================================
+
+elif mode == "🛠️ Schema Integrity":
+
+    st.title("🛠️ Dataset Integrity Report")
+
+    st.write(
+        "This section validates the dataset structure, identifies missing values, "
+        "examines data types, and provides a quick overview before analysis."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.subheader("Dataset Shape")
+
+        shape_df = pd.DataFrame(
+            {
+                "Metric": ["Rows", "Columns"],
+                "Value": [df.shape[0], df.shape[1]]
+            }
+        )
+
+        st.dataframe(shape_df, use_container_width=True)
+
+    with col2:
+
+        st.subheader("Data Types")
+
+        dtype_df = pd.DataFrame(
+            {
+                "Column": df.columns,
+                "Datatype": df.dtypes.astype(str)
+            }
+        )
+
+        st.dataframe(dtype_df, use_container_width=True)
+
+    st.divider()
+
+    st.subheader("Missing Values")
+
+    missing = (
+        df.isnull()
+        .sum()
+        .reset_index()
+    )
+
+    missing.columns = ["Column", "Missing Values"]
+
+    st.dataframe(missing, use_container_width=True)
+
+    st.divider()
+
+    st.subheader("Statistical Summary")
+
+    st.dataframe(df.describe(), use_container_width=True)
+
+    st.divider()
+
+    st.subheader("First 10 Records")
+
     st.dataframe(df.head(10), use_container_width=True)
 
-# 💾 SQL Aggregations Panel
-elif mode == '💾 SQL Aggregations':
-    st.header('💾 SQL Business Intelligence Engine Outputs')
-    qt = st.selectbox('Execute Query Viewport:', ['Top 10 Global Market Titles', 'Publisher Volume Rank', 'Corporate Financial Reliance Structure'])
-    
-    if qt == 'Top 10 Global Market Titles':
-        st.code('SELECT Name, Platform, Global_Sales FROM df ORDER BY Global_Sales DESC LIMIT 10;')
-        st.table(df[['Rank', 'Name', 'Platform', 'Global_Sales']].head(10))
-    elif qt == 'Publisher Volume Rank':
-        st.code('SELECT Publisher, COUNT(Name) as Total_Games FROM df GROUP BY Publisher ORDER BY Total_Games DESC LIMIT 5;') 
-        st.table(df.groupby('Publisher').size().reset_index(name='Total Titles Released').sort_values(by='Total Titles Released', ascending=False).head(5))
-    elif qt == 'Corporate Financial Reliance Structure':
-        st.code("""
-SELECT Publisher, MAX(Global_Sales) as Max_Game_Sales, SUM(Global_Sales) as Total_Pub_Sales,
-       (Max_Game_Sales / Total_Pub_Sales) * 100 AS Reliance_Percentage 
-FROM df GROUP BY Publisher HAVING Total_Pub_Sales > 100 ORDER BY Reliance_Percentage DESC;
-        """) 
-        rel_data = {
-            'Publisher': ['Microsoft Game Studios', 'Take-Two Interactive', 'Atari', 'Nintendo', 'Square Enix'],
-            'Max_Game_Sales': [21.82, 21.40, 7.81, 82.74, 5.95],
-            'Reliance_Percentage': ['8.88%', '5.36%', '5.32%', '4.64%', '4.11%']
-        }
-        st.dataframe(pd.DataFrame(rel_data), use_container_width=True)
+# =====================================================
+# SQL ANALYSIS
+# =====================================================
 
-# 📐 Statistical Distributions Panel
-elif mode == '📐 Statistical Distributions':
-    st.header('📐 Applied Statistical Diagnostics')
-    st.info('Mathematical Overview: Mean ($0.54M) >> Median ($0.17M) >> Mode ($0.02M). This variance trajectory proves a highly right-skewed Power Law Asset distribution.')
-    
-    fig, ax = plt.subplots(1, 2, figsize=(11, 4))
-    sns.histplot(df['Global_Sales'], bins=50, kde=True, ax=ax[0], color='#1E3A8A')
-    ax[0].set_xlim(0, 3)
-    ax[0].set_title('Right-Skewed Asset Value Tail Line')
-    
-    sns.boxplot(data=df, x='Genre', y='Global_Sales', ax=ax[1])
-    ax[1].set_ylim(0, 2)
-    ax[1].set_title('Variance and Distribution across Sectors')
-    plt.xticks(rotation=90)
-    
-    st.pyplot(fig)
-    st.markdown('**Risk Vector Metrics:** Puzzle titles display higher standard deviation matrices ($1.57$) compared to Action categories ($1.16$), creating a structurally higher capital risk deployment profile.')
+elif mode == "💾 SQL Analysis":
 
-# 🌏 Regional Patterns Panel
-elif mode == '🌏 Regional Patterns':
-    st.header('🌏 Multi-Territory Consumption Grids')
-    
-    fig, ax = plt.subplots(figsize=(9, 4))
-    df.groupby('Genre')[['NA_Sales','EU_Sales','JP_Sales']].sum().plot(kind='bar', ax=ax)
-    plt.title('Gross Volume Breakdown by Major Geographic Corridor Across Core Genres')
-    plt.ylabel('Aggregate Units Distributed (Millions)')
-    st.pyplot(fig)
-    
-    st.markdown('**Core Observation:** A major performance breakdown confirms that Eastern regions (Japan) heavily prioritize **Role-Playing Games (RPGs)**, while Western sectors shift towards **Action & Shooter** distributions.')
+    st.title("💾 SQL Business Intelligence")
 
-# 🚀 Feature Engineering Panel
-elif mode == '🚀 Feature Engineering':
-    st.header('🚀 Advanced Engineered Feature Optimizations')
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown('**Ecosystem Evolution Era Macro Bins:**')
-        st.dataframe(df.groupby('Era')['Global_Sales'].mean().reset_index(name='Mean Global Gross ($M)'), use_container_width=True)
-    with col2:
-        st.markdown('**Geographic Focus Strategy Allocation:**')
-        st.dataframe(df['Market_Strategy'].value_counts().reset_index(name='Volume Metrics'), use_container_width=True)
-        
-    st.markdown('---')
-    st.markdown('**Linguistic Structure Impact (Title Length Complexity vs Retail Performance)**')
-    
-    fig, ax = plt.subplots(figsize=(8, 3))
-    sns.scatterplot(data=df.head(500), x='Title_Length', y='Global_Sales', alpha=0.5, color='#EF4444')
-    plt.title('String Length Predictability Check Matrix (Pearson r = -0.0702)')
-    plt.xlabel('Character Length Count')
-    plt.ylabel('Global Retail Realization')
-    
+    query = st.selectbox(
+        "Select Business Query",
+        [
+            "Top 10 Best Selling Games",
+            "Top Publishers",
+            "Top Platforms",
+            "Genre Performance",
+            "Yearly Sales",
+            "Publisher Revenue"
+        ]
+    )
+
+    # -----------------------------------------
+
+    if query == "Top 10 Best Selling Games":
+
+        st.code(
+            """
+SELECT Name, Platform, Global_Sales
+FROM VideoGames
+ORDER BY Global_Sales DESC
+LIMIT 10;
+            """
+        )
+
+        top_games = (
+            df.sort_values(
+                "Global_Sales",
+                ascending=False
+            )[["Name", "Platform", "Genre", "Publisher", "Global_Sales"]]
+            .head(10)
+        )
+
+        st.dataframe(top_games, use_container_width=True)
+
+    # -----------------------------------------
+
+    elif query == "Top Publishers":
+
+        st.code(
+            """
+SELECT Publisher,
+COUNT(*) AS Total_Games
+FROM VideoGames
+GROUP BY Publisher
+ORDER BY Total_Games DESC;
+            """
+        )
+
+        publisher_df = (
+            df.groupby("Publisher")
+            .size()
+            .reset_index(name="Games Released")
+            .sort_values(
+                "Games Released",
+                ascending=False
+            )
+        )
+
+        st.dataframe(
+            publisher_df,
+            use_container_width=True
+        )
+
+    # -----------------------------------------
+
+    elif query == "Top Platforms":
+
+        st.code(
+            """
+SELECT Platform,
+SUM(Global_Sales)
+FROM VideoGames
+GROUP BY Platform
+ORDER BY SUM(Global_Sales) DESC;
+            """
+        )
+
+        platform_sales = (
+            df.groupby("Platform")["Global_Sales"]
+            .sum()
+            .reset_index()
+            .sort_values(
+                "Global_Sales",
+                ascending=False
+            )
+        )
+
+        st.dataframe(
+            platform_sales,
+            use_container_width=True
+        )
+
+    # -----------------------------------------
+
+    elif query == "Genre Performance":
+
+        st.code(
+            """
+SELECT Genre,
+AVG(Global_Sales)
+FROM VideoGames
+GROUP BY Genre;
+            """
+        )
+
+        genre = (
+            df.groupby("Genre")["Global_Sales"]
+            .agg(["count", "mean", "sum"])
+            .round(2)
+            .reset_index()
+        )
+
+        genre.columns = [
+            "Genre",
+            "Games",
+            "Average Sales",
+            "Total Sales"
+        ]
+
+        st.dataframe(
+            genre,
+            use_container_width=True
+        )
+
+    # -----------------------------------------
+
+    elif query == "Yearly Sales":
+
+        st.code(
+            """
+SELECT Year,
+SUM(Global_Sales)
+FROM VideoGames
+GROUP BY Year;
+            """
+        )
+
+        yearly = (
+            df.groupby("Year")["Global_Sales"]
+            .sum()
+            .reset_index()
+        )
+
+        st.dataframe(
+            yearly,
+            use_container_width=True
+        )
+
+    # -----------------------------------------
+
+    elif query == "Publisher Revenue":
+
+        st.code(
+            """
+SELECT Publisher,
+SUM(Global_Sales)
+FROM VideoGames
+GROUP BY Publisher
+ORDER BY SUM(Global_Sales) DESC;
+            """
+        )
+
+        revenue = (
+            df.groupby("Publisher")["Global_Sales"]
+            .sum()
+            .reset_index()
+            .sort_values(
+                "Global_Sales",
+                ascending=False
+            )
+        )
+
+        st.dataframe(
+            revenue,
+            use_container_width=True
+        )
+
+    st.divider()
+
+    st.info(
+        "These analyses demonstrate how SQL aggregation functions "
+        "(COUNT, SUM, AVG, GROUP BY, ORDER BY, LIMIT) can be replicated "
+        "efficiently using the Pandas library."
+    )
+# =====================================================
+# STATISTICAL ANALYSIS
+# =====================================================
+
+elif mode == "📈 Statistical Analysis":
+
+    st.title("📈 Statistical Analysis")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.metric("Mean Sales", f"{df['Global_Sales'].mean():.2f} M")
+        st.metric("Median Sales", f"{df['Global_Sales'].median():.2f} M")
+        st.metric("Maximum Sales", f"{df['Global_Sales'].max():.2f} M")
+
+    with c2:
+        st.metric("Minimum Sales", f"{df['Global_Sales'].min():.2f} M")
+        st.metric("Standard Deviation", f"{df['Global_Sales'].std():.2f}")
+        st.metric("Skewness", f"{df['Global_Sales'].skew():.2f}")
+
+    st.divider()
+
+    st.subheader("Distribution of Global Sales")
+
+    fig, ax = plt.subplots(figsize=(10,5))
+
+    sns.histplot(
+        data=df,
+        x="Global_Sales",
+        bins=50,
+        kde=True,
+        ax=ax
+    )
+
+    ax.set_xlim(0,3)
+
     st.pyplot(fig)
-    st.caption('With a calculation score near 0, structural titling character counts offer zero mathematical predictability relative to commercial success.')
+
+    st.divider()
+
+    st.subheader("Sales Distribution by Genre")
+
+    fig, ax = plt.subplots(figsize=(12,6))
+
+    sns.boxplot(
+        data=df,
+        x="Genre",
+        y="Global_Sales",
+        ax=ax
+    )
+
+    plt.xticks(rotation=45)
+
+    ax.set_ylim(0,2)
+
+    st.pyplot(fig)
+
+    st.success(
+        "The dataset is highly right-skewed. A few blockbuster games generate exceptionally high sales while the majority have relatively low sales."
+    )
+
+# =====================================================
+# REGIONAL ANALYSIS
+# =====================================================
+
+elif mode == "🌍 Regional Analysis":
+
+    st.title("🌍 Regional Sales Analysis")
+
+    regional = (
+        df.groupby("Genre")[["NA_Sales","EU_Sales","JP_Sales","Other_Sales"]]
+        .sum()
+        .sort_values("NA_Sales",ascending=False)
+    )
+
+    st.subheader("Regional Sales by Genre")
+
+    fig, ax = plt.subplots(figsize=(12,6))
+
+    regional.plot(
+        kind="bar",
+        ax=ax
+    )
+
+    plt.xticks(rotation=45)
+
+    ax.set_ylabel("Sales (Millions)")
+
+    st.pyplot(fig)
+
+    st.divider()
+
+    c1,c2,c3 = st.columns(3)
+
+    with c1:
+        st.metric(
+            "North America",
+            f"{df['NA_Sales'].sum():,.0f} M"
+        )
+
+    with c2:
+        st.metric(
+            "Europe",
+            f"{df['EU_Sales'].sum():,.0f} M"
+        )
+
+    with c3:
+        st.metric(
+            "Japan",
+            f"{df['JP_Sales'].sum():,.0f} M"
+        )
+
+    st.info(
+        """
+North America contributes the highest overall sales.
+
+Europe is the second-largest market.
+
+Japan strongly favors Role-Playing games compared to Western markets.
+"""
+    )
+
+# =====================================================
+# FEATURE ENGINEERING
+# =====================================================
+
+elif mode == "🚀 Feature Engineering":
+
+    st.title("🚀 Feature Engineering")
+
+    c1,c2 = st.columns(2)
+
+    with c1:
+
+        st.subheader("Average Sales by Era")
+
+        era_df = (
+            df.groupby("Era")["Global_Sales"]
+            .mean()
+            .reset_index()
+        )
+
+        st.dataframe(
+            era_df,
+            use_container_width=True
+        )
+
+    with c2:
+
+        st.subheader("Market Strategy")
+
+        strategy = (
+            df["Market_Strategy"]
+            .value_counts()
+            .rename_axis("Strategy")
+            .reset_index(name="Games")
+        )
+
+        st.dataframe(
+            strategy,
+            use_container_width=True
+        )
+
+    st.divider()
+
+    st.subheader("Title Length vs Global Sales")
+
+    sample_df = df.sample(
+        min(600,len(df)),
+        random_state=42
+    )
+
+    fig, ax = plt.subplots(figsize=(10,5))
+
+    sns.scatterplot(
+        data=sample_df,
+        x="Title_Length",
+        y="Global_Sales",
+        alpha=0.6,
+        ax=ax
+    )
+
+    st.pyplot(fig)
+
+    correlation = df["Title_Length"].corr(df["Global_Sales"])
+
+    st.metric(
+        "Correlation",
+        f"{correlation:.3f}"
+    )
+
+    st.success(
+        "The correlation is extremely weak, indicating that game title length has virtually no relationship with commercial success."
+    )
+
+# =====================================================
+# FOOTER
+# =====================================================
+
+st.divider()
+
+st.markdown(
+"""
+### 👨‍💻 About this Project
+
+This dashboard demonstrates practical **Data Analytics** skills using:
+
+- Python
+- Pandas
+- NumPy
+- SQL-style Analysis
+- Matplotlib
+- Seaborn
+- Feature Engineering
+- Business Intelligence
+- Streamlit
+
+---
+
+**Developed by Roshan Kumar Sah**
+
+Chemical Engineering • NIT Durgapur
+
+Aspiring Data Scientist | Machine Learning Enthusiast | Data Analyst
+"""
+)
